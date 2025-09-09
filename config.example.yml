@@ -1,0 +1,150 @@
+# MCP Orchestrator Configuration Example
+
+# MCP Servers to connect to
+servers:
+  - name: airtable
+    package: "@rashidazarang/airtable-mcp"
+    version: "3.2.4"
+    env:
+      AIRTABLE_TOKEN: ${AIRTABLE_TOKEN}
+      AIRTABLE_BASE_ID: ${AIRTABLE_BASE_ID}
+    enabled: true
+
+  - name: supabase
+    package: "@supabase/mcp-server"
+    env:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_KEY}
+    enabled: true
+
+  - name: github
+    package: "@modelcontextprotocol/server-github"
+    env:
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+    enabled: true
+
+  - name: notion
+    package: "@mcp-servers/notion"
+    env:
+      NOTION_TOKEN: ${NOTION_TOKEN}
+    enabled: false  # Disabled by default
+
+  - name: postgres
+    package: "@modelcontextprotocol/server-postgres"
+    env:
+      DATABASE_URL: ${DATABASE_URL}
+    enabled: false
+
+# Routing configuration
+routing:
+  smartRouting: true
+  cacheEnabled: true
+  parallelExecution: true
+  fallbackEnabled: true
+
+# Cache configuration
+cache:
+  enabled: true
+  ttl: 300  # 5 minutes
+  maxSize: 1000
+
+# Predefined workflows
+workflows:
+  - name: daily_sync
+    description: "Sync data between Airtable and Supabase"
+    steps:
+      - name: fetch_airtable
+        server: airtable
+        tool: list_records
+        params:
+          table: "Projects"
+          view: "Active"
+      
+      - name: transform
+        server: orchestrator
+        tool: transform
+        transform:
+          mapping:
+            id: record_id
+            title: name
+            status: state
+      
+      - name: update_supabase
+        server: supabase
+        tool: batch_upsert
+        params:
+          table: projects
+          onConflict: id
+
+  - name: cross_platform_search
+    description: "Search across all connected platforms"
+    steps:
+      - name: search_all
+        server: orchestrator
+        tool: cross_server_query
+        params:
+          query: "${searchQuery}"
+          servers:
+            - airtable
+            - supabase
+            - notion
+            - github
+
+  - name: backup_to_github
+    description: "Backup database to GitHub"
+    steps:
+      - name: export_data
+        server: "${sourceServer}"
+        tool: export_all
+      
+      - name: create_backup
+        server: github
+        tool: create_file
+        params:
+          repo: backups
+          path: "backups/${sourceServer}_${timestamp}.json"
+          message: "Automated backup from MCP Orchestrator"
+
+# Keyword mappings for intelligent routing
+keywordMappings:
+  airtable:
+    - table
+    - base
+    - record
+    - field
+    - view
+    - formula
+  
+  supabase:
+    - query
+    - sql
+    - postgres
+    - database
+    - rpc
+  
+  github:
+    - repository
+    - issue
+    - pull request
+    - commit
+    - branch
+  
+  notion:
+    - page
+    - database
+    - block
+    - workspace
+
+# Fallback servers for reliability
+fallbackServers:
+  airtable:
+    - supabase
+    - notion
+  
+  supabase:
+    - postgres
+    - airtable
+  
+  github:
+    - gitlab
+    - bitbucket
