@@ -1,154 +1,67 @@
-#!/usr/bin/env node
-
 /**
- * MCP Orchestrator - Meta-MCP Server
+ * MCP Intelligence - Semantic Intelligence Layer for MCP Servers
  * 
- * A single MCP server that orchestrates multiple MCP servers,
- * providing unified access and cross-server workflows.
+ * The brain that understands natural language and intelligently
+ * routes to appropriate MCP servers.
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  Tool,
-  TextContent,
-  ImageContent,
-  EmbeddedContent,
-} from '@modelcontextprotocol/sdk/types.js';
-import { MCPOrchestrator } from './core/orchestrator';
-import { ConfigLoader } from './utils/config-loader';
-import { Logger } from './utils/logger';
-import * as dotenv from 'dotenv';
+// Core
+export { MCPIntelligence } from './core/MCPIntelligence';
 
-// Load environment variables
-dotenv.config();
+// NLP
+export { NLPProcessor } from './nlp/NLPProcessor';
 
-const logger = new Logger('MCPOrchestrator');
+// Registry
+export { ServerRegistry } from './registry/ServerRegistry';
 
-class MCPOrchestratorServer {
-  private server: Server;
-  private orchestrator: MCPOrchestrator;
+// Routing
+export { SemanticRouter } from './routing/SemanticRouter';
 
-  constructor() {
-    this.server = new Server(
-      {
-        name: 'mcp-orchestrator',
-        version: '0.1.0',
-      },
-      {
-        capabilities: {
-          tools: {},
-        },
-      }
-    );
+// Validation
+export { ValidationEngine } from './validation/ValidationEngine';
 
-    // Initialize orchestrator
-    this.orchestrator = new MCPOrchestrator();
-  }
+// Learning
+export { LearningSystem } from './learning/LearningSystem';
 
-  async initialize() {
-    logger.info('Initializing MCP Orchestrator Server...');
+// Types
+export * from './types/intelligence';
 
-    // Load configuration
-    const config = await ConfigLoader.load();
-    await this.orchestrator.initialize(config);
+// Utils
+export { Logger } from './utils/logger';
 
-    // Setup request handlers
-    this.setupHandlers();
+// Version
+export const VERSION = '1.0.0';
 
-    logger.info('MCP Orchestrator Server initialized successfully');
-  }
-
-  private setupHandlers() {
-    // Handle list tools request
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      const tools = await this.orchestrator.getAllTools();
-      
-      return {
-        tools: tools.map(tool => ({
-          name: tool.name,
-          description: tool.description,
-          inputSchema: tool.inputSchema || {
-            type: 'object',
-            properties: {},
-          },
-        })),
-      };
-    });
-
-    // Handle tool execution
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
-      
-      try {
-        logger.info(`Executing tool: ${name}`);
-        
-        // Execute through orchestrator
-        const result = await this.orchestrator.executeTool(name, args);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(result, null, 2),
-            } as TextContent,
-          ],
-        };
-      } catch (error) {
-        logger.error(`Tool execution failed: ${error.message}`);
-        
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error: ${error.message}`,
-            } as TextContent,
-          ],
-          isError: true,
-        };
-      }
-    });
-
-    // Error handling
-    this.server.onerror = (error) => {
-      logger.error('Server error:', error);
-    };
-  }
-
-  async start() {
-    const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    logger.info('MCP Orchestrator Server started on stdio transport');
-  }
+/**
+ * Quick start function to create MCP Intelligence instance
+ */
+export async function createMCPIntelligence(config?: any) {
+  const { MCPIntelligence } = await import('./core/MCPIntelligence');
+  const intelligence = new MCPIntelligence(config);
+  await intelligence.initialize();
+  return intelligence;
 }
 
-// Main entry point
-async function main() {
-  try {
-    const server = new MCPOrchestratorServer();
-    await server.initialize();
-    await server.start();
-  } catch (error) {
-    logger.error('Failed to start MCP Orchestrator:', error);
-    process.exit(1);
-  }
+/**
+ * Create MCP Intelligence with PMIP integration
+ */
+export async function createPMIPIntelligence() {
+  return createMCPIntelligence({
+    pmipIntegration: true,
+    enabledProtocols: {
+      mcp: true,
+      rest: true,
+      soap: true,
+      lambda: true
+    },
+    learning: {
+      enabled: true,
+      minConfidence: 0.7,
+      maxHistorySize: 1000
+    },
+    validation: {
+      enabled: true,
+      strict: false
+    }
+  });
 }
-
-// Handle process signals
-process.on('SIGINT', () => {
-  logger.info('Shutting down MCP Orchestrator...');
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  logger.info('Shutting down MCP Orchestrator...');
-  process.exit(0);
-});
-
-// Start the server
-main().catch((error) => {
-  logger.error('Fatal error:', error);
-  process.exit(1);
-});
