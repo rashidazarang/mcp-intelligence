@@ -1,0 +1,49 @@
+{
+  "name": "@mcp-intelligence/demo",
+  "version": "1.0.0",
+  "description": "Reproducible demo showcasing MCP Intelligence with Agent Orchestra and MCP servers",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "demo:setup": "ts-node scripts/setup.ts",
+    "demo:full": "ts-node src/run-demo.ts",
+    "demo:routing-accuracy": "ts-node src/scenarios/routing-accuracy.ts",
+    "demo:latency-test": "ts-node src/scenarios/latency-test.ts",
+    "demo:token-efficiency": "ts-node src/scenarios/token-efficiency.ts",
+    "demo:report": "ts-node src/generate-report.ts",
+    "demo:quick": "npm run demo:setup && npm run demo:full && npm run demo:report",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "seed:data": "ts-node scripts/seed-data.ts",
+    "test": "jest",
+    "clean": "rm -rf dist demo-results"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "airtable": "^0.12.2",
+    "chalk": "^4.1.2",
+    "chart.js": "^4.4.1",
+    "cli-progress": "^3.12.0",
+    "console-table-printer": "^2.14.6",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "nanoid": "^3.3.7",
+    "table": "^6.8.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.10",
+    "@types/node": "^20.10.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

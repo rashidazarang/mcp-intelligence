@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # Supabase services for demo
+  supabase-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: demo-password
+      POSTGRES_DB: demo-db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./scripts/supabase-init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mock Airtable API server for demo
+  airtable-mock:
+    build:
+      context: ./mock-servers
+      dockerfile: Dockerfile.airtable
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - API_KEY=demo-key
+    volumes:
+      - ./data/airtable:/app/data
+    depends_on:
+      - redis
+
+  # Redis for caching demo results
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+
+  # Demo dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./demo-results:/app/results
+    depends_on:
+      - supabase-db
+      - airtable-mock
+
+  # MCP Intelligence server
+  mcp-intelligence:
+    build:
+      context: ..
+      dockerfile: demo/Dockerfile.mcp
+    ports:
+      - "9000:9000"
+    environment:
+      - SUPABASE_URL=http://supabase-db:5432
+      - SUPABASE_KEY=demo-key
+      - AIRTABLE_URL=http://airtable-mock:3000
+      - AIRTABLE_KEY=demo-key
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - supabase-db
+      - airtable-mock
+      - redis
+
+volumes:
+  postgres-data:
+  airtable-data:
+  redis-data:
